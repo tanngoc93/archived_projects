@@ -1,0 +1,60 @@
+version: "3.3"
+
+services:
+  db:
+    image: postgres:10.1
+    ports:
+      - "65432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+
+  backend:
+    tty: true
+    stdin_open: true
+    container_name: herepup_backend
+    build:
+      context: .
+      dockerfile: ./config/containers/development/rails/Dockerfile
+    working_dir: /var/www/ruby
+    environment:
+      RAILS_ENV: development
+      PORT: 3003
+    command: sh ./config/containers/bash/rails_start.sh
+    volumes:
+      - .:/var/www/ruby
+    ports:
+      - "3003:3003"
+    expose:
+      - "3003"
+    links:
+      - db
+    depends_on:
+      - db
+
+  frontend:
+    container_name: herepup_frontend
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    command: >
+      bash -c "yarn start"
+    working_dir: /var/www/node
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./client:/var/www/node/:rw
+      -  /var/www/node/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  swagger:
+    image: swaggerapi/swagger-ui
+    depends_on:
+      - backend
+    ports:
+      - "8088:8080"
+    environment:
+      - API_URL=http://0.0.0.0:3003/swagger_doc

@@ -1,0 +1,98 @@
+defaults: &defaults
+  working_directory: ~/buildbox
+  docker:
+    - image: circleci/ruby:2.5.3-node-browsers-legacy
+      environment:
+        BUNDLE_JOBS: 3
+        BUNDLE_RETRY: 3
+        BUNDLE_PATH: vendor/bundle
+        RAILS_ENV: test
+        RACK_ENV: test
+
+version: 2.0
+jobs:
+  bundle_dependencies:
+    <<: *defaults
+    steps:
+      - checkout
+
+      - setup_remote_docker:
+          docker_layer_caching: true
+
+      - run:
+          name: Check docker info
+          command: docker info
+
+      - run:
+          name: Build docker docker-compose
+          command: |
+            docker-compose build
+
+  deployment:
+    <<: *defaults
+
+    environment:
+      SERVER_USER:     deployer
+      SERVER_PORT:     22
+      SERVER_HOST:     xx.xx.xx.xx
+
+      DEPLOY_PATH:     /var/www
+      DEPLOY_ENV:      production
+
+    steps:
+      - run: 
+          name: Set environment variables
+          command: |
+            echo export DOCKER_USER=${DOCKER_USER} >> $BASH_ENV
+            echo export DOCKER_PASSWORD=$DOCKER_PASSWORD >> $BASH_ENV
+            echo export DEPLOY_TAG=v${CIRCLE_BUILD_NUM}.${CIRCLE_SHA1:0:7} >> $BASH_ENV
+            source $BASH_ENV
+
+      - checkout
+
+      - setup_remote_docker:   # (2)
+          docker_layer_caching: true # (3)
+
+      - run: 
+          name: Build docker-compose
+          command: docker-compose -f docker-compose.build.pro.yml build
+
+      - restore_cache:
+          keys:
+          - buildbox-{{ checksum "Gemfile.lock" }}
+
+      - run:
+          name: Bundle Install
+          command: bundle check || bundle install
+
+      - save_cache:
+          key: buildbox-{{ checksum "Gemfile.lock" }}
+          paths:
+            - ~/buildbox/vendor/bundle
+
+      - run: 
+          name: Push images to docker hub
+          command: |
+            DEPLOY_TAG=v${CIRCLE_BUILD_NUM}.${CIRCLE_SHA1:0:7}
+
+            docker login -u ${DOCKER_USER} -p ${DOCKER_PASSWORD}
+
+            docker tag buildbox_rails tanngoc93/ccscc_rails:${DEPLOY_TAG}
+            docker tag buildbox_nginx tanngoc93/ccscc_nginx:${DEPLOY_TAG}
+
+            docker push tanngoc93/build_rails:${DEPLOY_TAG}
+            docker push tanngoc93/build_nginx:${DEPLOY_TAG}
+            
+            bundle exec rake docker:deploy
+
+workflows:
+  version: 2
+  Build-and-Deploy:
+    jobs:
+      - bundle_dependencies
+      - deployment:
+          requires:
+            - bundle_dependencies
+          filters:
+            branches:
+              only: master
