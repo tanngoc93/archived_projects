@@ -1,6 +1,1 @@
-build/
 node_modules/
-test/
-Dockerfile
-gulpfile.coffee
-README.md

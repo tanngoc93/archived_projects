@@ -5,16 +5,15 @@ RUN apt-get update && apt-get install -y libpq-dev
 RUN curl -sL https://deb.nodesource.com/setup_8.x | bash - \
  && apt-get install -y nodejs
 
-RUN mkdir -p /var/www/ruby
+RUN mkdir -p /var/www/html \
+ && mkdir -p /var/www/html/log \&& mkdir -p /var/www/html/tmp/pids
 
-RUN mkdir -p /var/www/ruby/tmp/pids
+WORKDIR /var/www/html
 
-WORKDIR /var/www/ruby
+COPY Gemfile /var/www/html/Gemfile
 
-COPY Gemfile /var/www/ruby/Gemfile
-
-COPY Gemfile.lock /var/www/ruby/Gemfile.lock
+COPY Gemfile.lock /var/www/html/Gemfile.lock
 
 RUN gem install bundler && bundle install
 
-COPY . .
+COPY . /var/www/html

@@ -1,60 +1,68 @@
-version: "3.3"
+version: "3.7"
 
 services:
   db:
     image: postgres:10.1
-    ports:
-      - "65432:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+    networks:
+      - bridge-network
 
   backend:
     tty: true
     stdin_open: true
-    container_name: herepup_backend
     build:
       context: .
       dockerfile: ./config/containers/development/rails/Dockerfile
-    working_dir: /var/www/ruby
+    command: sh ./config/containers/bash/rails_start.sh
+    working_dir: /var/www/html
     environment:
       RAILS_ENV: development
+      RACK_ENV: development
+      PSQL_PASSWORD: postgres
+      PSQL_USERNAME: postgres
+      PSQL_HOST: db
+      PSQL_POOL: 5
       PORT: 3003
-    command: sh ./config/containers/bash/rails_start.sh
     volumes:
-      - .:/var/www/ruby
+      - .:/var/www/html
     ports:
       - "3003:3003"
-    expose:
-      - "3003"
-    links:
-      - db
     depends_on:
       - db
+    networks:
+      - bridge-network
 
   frontend:
-    container_name: herepup_frontend
     build:
       context: ./client
       dockerfile: Dockerfile
-    command: >
-      bash -c "yarn start"
-    working_dir: /var/www/node
+    command: bash -c "yarn start"
+    working_dir: /var/www/html
     environment:
       - NODE_ENV=development
     volumes:
-      - ./client:/var/www/node/:rw
-      -  /var/www/node/node_modules
+      - ./client:/var/www/html/:rw
+      -  /var/www/html/node_modules
     ports:
       - "3000:3000"
     depends_on:
       - backend
+    networks:
+      - bridge-network
 
   swagger:
     image: swaggerapi/swagger-ui
     depends_on:
       - backend
     ports:
-      - "8088:8080"
+      - "8080:8080"
     environment:
       - API_URL=http://0.0.0.0:3003/swagger_doc
+    networks:
+      - bridge-network
+
+networks:
+  bridge-network:
+    driver: bridge

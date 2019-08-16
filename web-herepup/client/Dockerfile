@@ -2,14 +2,14 @@ FROM node:8.12.0
 
 RUN npm install -g webpack webpack-dev-server
 
-RUN mkdir /var/www/node
+RUN mkdir -p /var/www/html
 
-WORKDIR   /var/www/node
+WORKDIR /var/www/html
 
-COPY package.json      /var/www/node/package.json
+ADD package.json /var/www/html/package.json
 
-COPY package-lock.json /var/www/node/package-lock.json
+ADD yarn.lock /var/www/html/yarn.lock
 
-RUN npm install
+RUN yarn install
 
-COPY .  /var/www/node
+COPY . /var/www/html
