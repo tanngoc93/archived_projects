@@ -9,7 +9,7 @@ gem 'pg', '>= 0.18', '< 2.0'
 gem 'puma', '~> 3.11'
 gem 'bootsnap', '>= 1.1.0', require: false
 gem 'rack-cors'
-gem 'devise', '~> 4.2'
+gem 'devise', '~> 4.7'
 gem 'jwt', '~> 1.5', '>= 1.5.4'
 gem 'grape-entity', '~> 0.7.1'
 
